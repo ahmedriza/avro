@@ -79,7 +79,8 @@ impl<R: Read> Block<R> {
                     }
                 })
                 .ok_or(Error::GetAvroSchemaFromMap)?;
-            self.writer_schema = Schema::parse(&json)?;
+
+            self.writer_schema = Schema::parse(&json).unwrap_or(Schema::Null);
 
             if let Some(codec) = meta
                 .get("avro.codec")
@@ -258,7 +259,6 @@ impl<'a, R: Read> Reader<'a, R> {
         } else {
             None
         };
-
         self.block.read_next(read_schema)
     }
 }
@@ -294,7 +294,13 @@ pub fn from_avro_datum<R: Read>(
     reader: &mut R,
     reader_schema: Option<&Schema>,
 ) -> AvroResult<Value> {
-    let value = decode(writer_schema, reader)?;
+    // TODO
+    // let value = decode(writer_schema, reader)?;
+    let value = if *writer_schema == Schema::Null {
+        decode(reader_schema.unwrap(), reader)?
+    } else {
+        decode(writer_schema, reader)?
+    };
     match reader_schema {
         Some(schema) => value.resolve(schema),
         None => Ok(value),
